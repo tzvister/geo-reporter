@@ -4,6 +4,7 @@ description: Schema.org structured data audit and generation optimized for AI di
 version: 1.0.0
 author: geo-seo-claude
 tags: [geo, schema, structured-data, json-ld, entity-recognition, ai-discoverability]
+allowed-tools: Read, Grep, Glob, Bash, WebFetch, Write
 ---
 
 # GEO Schema & Structured Data
