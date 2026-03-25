@@ -42,6 +42,22 @@ cd geo-seo-claude
 ./install.sh
 ```
 
+### Windows (Git Bash)
+
+Requires [Git for Windows](https://git-scm.com/downloads) which includes Git Bash.
+
+```bash
+# Option 1: One-command install (run from Git Bash, not PowerShell/CMD)
+curl -fsSL https://raw.githubusercontent.com/zubair-trabzada/geo-seo-claude/main/install-win.sh | bash
+
+# Option 2: Manual install
+git clone https://github.com/zubair-trabzada/geo-seo-claude.git
+cd geo-seo-claude
+./install-win.sh
+```
+
+> **Note:** Right-click the folder and select "Open Git Bash here", or open Git Bash and navigate to the directory. Do not use PowerShell or Command Prompt.
+
 ### Requirements
 
 - Python 3.8+
