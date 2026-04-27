@@ -56,6 +56,31 @@ Check robots.txt for directives targeting these AI crawlers:
 
 **Important nuance**: Blocking Google-Extended does NOT block Googlebot. Google-Extended only controls AI training data usage, not search indexing. However, blocking Google-Extended may reduce presence in AI Overviews. Recommend allowing Google-Extended unless there is a specific data licensing concern.
 
+#### 1.2.1 Live AI Crawler Reachability (verify declared policy)
+
+`robots.txt` declares *intent*. A site can have a permissive `robots.txt` while a Cloudflare bot management rule, an AWS WAF custom rule, or an Imperva allowlist silently returns `HTTP 403` to GPTBot, ClaudeBot, and Googlebot — the declared policy looks fine, but AI search products see nothing. This step closes that gap by replaying the request as each AI crawler and observing what actually comes back.
+
+Run the live probe (same `fetch_page.py` script used elsewhere in this audit, in `bots` mode):
+
+```bash
+python scripts/fetch_page.py <url> bots
+```
+
+The probe fetches a Chrome baseline (with a Playwright fallback if Cloudflare serves a JS challenge), fingerprints the WAF/CDN in front of the site, then replays the request with 17 AI crawler user-agents — tagged by class (live-retrieval, search-index, traditional-search, training) so retrieval-bot blocks (the highest GEO impact) are scored separately from training-bot blocks (low GEO impact, often intentional). The output is a single JSON object with `baseline`, `js_challenge_detected`, `wafs_detected`, `probes[]`, `class_scores`, `verdict`, and `overall_score`.
+
+**How to use the result in this audit:**
+
+1. Walk every `probes[]` entry and compare against the declared `robots.txt` status from 1.2. The critical case is **live blocked + declared allowed** — this is the #1 finding to surface. It exists *only* because of live probing; static `robots.txt` analysis would have missed it.
+2. If `js_challenge_detected` is `true` and `baseline.used_playwright` is `false`, the site is invisible to every non-browser HTTP client (which is every AI crawler, regardless of robots.txt). Treat this as a critical technical failure.
+3. Use `wafs_detected` to make remediation product-specific. Cloudflare, AWS WAF, Imperva, Sucuri, and Akamai each fix this in completely different consoles — naming the actual product turns "your bots are blocked" into an actionable next step.
+4. **Googlebot blocked is its own emergency.** Surface it separately and prominently even if the user only asked about AI bots — a Googlebot 403 affects regular Google Search indexing, not just AI search, and the site may be deindexing without anyone noticing.
+
+**Scoring impact:** the live probe determines the *actual* score for 1.2. If `robots.txt` declares an AI crawler is allowed but the live probe shows it blocked, score that crawler as blocked — declared intent doesn't earn points if the bot can't reach the page.
+
+**Caveat to mention in the report:** the probe runs from the auditor's machine, so a 403 to "Googlebot" strongly suggests UA-based rules but doesn't *definitively* prove the real Googlebot (which Cloudflare/Akamai verify by reverse-DNS) is blocked. Note this nuance when reporting Googlebot blocks.
+
+For users who want to invoke the live probe directly outside a full audit (e.g. iterating on a Cloudflare WAF fix and re-checking after each change), point them at the standalone `geo-botaccess` skill, which wraps the same script with a fix-and-retest workflow.
+
 ### 1.3 XML Sitemaps
 - Fetch sitemap (check robots.txt for location, or try `/sitemap.xml`, `/sitemap_index.xml`)
 - Validate XML syntax
