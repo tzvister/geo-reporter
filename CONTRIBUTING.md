@@ -25,6 +25,36 @@ The standard fork-and-PR flow:
 4. If your change is user-visible, add an entry under `## [Unreleased]` in `CHANGELOG.md`.
 5. Open the PR against `main`. Reference any related issue.
 
+## Local development
+
+To iterate on a skill or test someone else's PR without re-installing on every change, use **dev mode**:
+
+```bash
+./dev-link.sh
+```
+
+This replaces the installed copies under `~/.claude/skills/` with symlinks pointing back into your repo working tree. Edits in the repo (or branch checkouts) are immediately live in Claude Code with no copy step.
+
+**Workflow for testing a PR locally:**
+
+```bash
+git fetch origin pull/<N>/head:pr-<N>
+git checkout pr-<N>
+# /geo commands in Claude Code now run the PR's code.
+# Edit, save, re-run /geo — instant feedback.
+
+git checkout main         # back to v0.x main, still live via symlinks
+./dev-unlink.sh           # exit dev mode entirely, frozen install
+```
+
+Caveats:
+
+- **Whatever branch you have checked out is what Claude Code runs.** Don't run `/geo` audits on real client work while a WIP branch is checked out.
+- Your local-only skills (e.g. anything in `~/.claude/skills/` that isn't part of GEO Reporter) stay untouched by `dev-link.sh` / `dev-unlink.sh`.
+- For testing multiple PRs in parallel, use `git worktree add ../geo-reporter-pr-<N> pr-<N>`, then run `dev-link.sh` from whichever worktree you want active.
+
+When you're done testing, `./dev-unlink.sh` removes the symlinks and re-installs proper copies via `install.sh` (so your installed skill is frozen at the current branch's state).
+
 ## Style guidelines
 
 ### Commit messages
