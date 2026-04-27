@@ -25,7 +25,7 @@ This skill aggregates outputs from all GEO audit skills into a single, professio
 2. Collect all scores and findings
 3. Calculate the composite GEO Readiness Score
 4. Generate the client report using the template below
-5. Output: GEO-CLIENT-REPORT.md
+5. Output: `GEO-CLIENT-REPORT-<DOMAIN-SLUG>.md` (see "Output" section for the slug rule)
 
 ---
 

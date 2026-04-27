@@ -113,7 +113,7 @@ After generation, tell the user where the PDF was saved and its file size.
 When the user runs this skill, follow this exact sequence:
 
 1. **Check for existing audit data** — Look for recent GEO audit reports in the current directory:
-   - `GEO-CLIENT-REPORT.md`
+   - `GEO-CLIENT-REPORT-<DOMAIN-SLUG>.md` (per the slug convention introduced in this skill)
    - `GEO-AUDIT-REPORT.md`
    - Or any `GEO-*.md` files from a recent audit
 
