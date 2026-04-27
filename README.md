@@ -100,15 +100,16 @@ Open Claude Code and use these commands:
 geo-reporter/
 ├── geo/                          # Main skill orchestrator
 │   └── SKILL.md                  # Primary skill file with commands & routing
-├── skills/                       # 13 specialized sub-skills
+├── skills/                       # 15 specialized sub-skills
 │   ├── geo-audit/                # Full audit orchestration & scoring
+│   ├── geo-botaccess/            # Live AI crawler reachability probe (WAF / Cloudflare detection)
 │   ├── geo-citability/           # AI citation readiness scoring
-│   ├── geo-crawlers/             # AI crawler access analysis
+│   ├── geo-crawlers/             # AI crawler access (robots.txt) + Content Signals
 │   ├── geo-llmstxt/              # llms.txt standard analysis & generation
 │   ├── geo-brand-mentions/       # Brand presence on AI-cited platforms
 │   ├── geo-platform-optimizer/   # Platform-specific AI search optimization
 │   ├── geo-schema/               # Structured data for AI discoverability
-│   ├── geo-technical/            # Technical SEO foundations
+│   ├── geo-technical/            # Technical SEO + agent-readiness signals
 │   ├── geo-content/              # Content quality & E-E-A-T
 │   ├── geo-report/               # Client-ready markdown report generation
 │   ├── geo-report-pdf/           # Professional PDF report with charts
@@ -122,7 +123,7 @@ geo-reporter/
 │   ├── geo-content.md            # Content & E-E-A-T analysis
 │   └── geo-schema.md             # Schema markup analysis
 ├── scripts/                      # Python utilities
-│   ├── fetch_page.py             # Page fetching & parsing
+│   ├── fetch_page.py             # Page fetching, robots.txt parsing, live AI crawler probe
 │   ├── citability_scorer.py      # AI citability scoring engine
 │   ├── brand_scanner.py          # Brand mention detection
 │   ├── llmstxt_generator.py      # llms.txt validation & generation
@@ -134,9 +135,15 @@ geo-reporter/
 │   ├── software-saas.json        # SoftwareApplication schema
 │   ├── product-ecommerce.json    # Product schema with offers
 │   └── website-searchaction.json # WebSite + SearchAction schema
+├── tests/                        # pytest suite (60 tests covering probes, SSR, scoring)
+├── .github/workflows/            # GitHub Actions
+│   └── claude-review.yml         # Manual `needs-review`-triggered Claude PR review
 ├── install.sh                    # One-command installer
 ├── uninstall.sh                  # Uninstaller
 ├── requirements.txt              # Python dependencies
+├── CHANGELOG.md                  # Release history (Keep a Changelog)
+├── CONTRIBUTING.md               # Contribution guidelines + review SLA
+├── LICENSE                       # MIT (with upstream attribution)
 └── README.md                     # This file
 ```
 
@@ -194,7 +201,13 @@ When you run `/geo audit https://example.com`:
 Analyzes content blocks for AI citation readiness. Optimal AI-cited passages are 134-167 words, self-contained, fact-rich, and directly answer questions.
 
 ### AI Crawler Analysis
-Checks robots.txt for 14+ AI crawlers (GPTBot, ClaudeBot, PerplexityBot, etc.) and provides specific allow/block recommendations.
+Checks robots.txt for 17 AI crawlers (GPTBot, ClaudeBot, PerplexityBot, OAI-SearchBot, Claude-SearchBot, Claude-User, Perplexity-User, etc.) classified by purpose — **training**, **search-index**, **live-retrieval**, **traditional-search** — so the GEO impact of blocking can be scored accurately. The "block training, allow retrieval" publisher posture (NYT/WSJ/Reuters/BBC pattern) reads as healthy, not as "partially blocked".
+
+### Live AI Crawler Reachability Probe (`geo-botaccess`)
+Goes beyond static robots.txt: replays the homepage as each AI crawler user-agent against your site, fingerprints the WAF/CDN (Cloudflare, AWS WAF, Imperva, Akamai, and 13 others), detects Cloudflare JS challenges with optional Playwright fallback, and surfaces declared-vs-actual mismatches as critical findings. Built for the iterative fix-and-retest loop after a WAF rule change.
+
+### Content Signals & Agent-Readiness
+Detects [IETF Content Signals](https://contentsignals.org/) (`Content-Signal: ai-train=no, search=yes` directives in robots.txt), RFC 8288 `Link:` headers (`api-catalog`, `service-doc`, `mcp-server-card`), and Markdown content negotiation (`Accept: text/markdown`). Non-scoring — surfaces emerging-spec signals that platforms like Cloudflare and isitagentready.com look for.
 
 ### Brand Mention Scanning
 Brand mentions correlate 3x more strongly with AI visibility than backlinks. Scans YouTube, Reddit, Wikipedia, LinkedIn, and 7+ other platforms.
