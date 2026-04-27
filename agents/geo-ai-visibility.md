@@ -78,7 +78,7 @@ Calculate **Crawler Access Score**:
 - Deduct 10 points if no sitemap is referenced.
 - Floor at 0.
 
-**Content Signals (non-scoring):** Using the already-fetched robots.txt, scan for a `Content-Signal:` directive (IETF draft `draft-romm-aipref-contentsignals`). If found, parse key=value pairs and record the declared preferences. Valid keys: `ai-train`, `search`, `ai-personalization`, `ai-retrieval`. Valid values: `yes`, `no`. If absent, note as a recommendation. This check does not affect the Crawler Access Score — it is a non-scored flag.
+**Content Signals (non-scoring):** Using the already-fetched robots.txt, scan for a `Content-Signal:` directive (IETF draft `draft-romm-aipref-contentsignals`). If found, parse key=value pairs and record the declared preferences. Valid keys: `ai-train`, `search`, `ai-personalization`, `ai-retrieval`, `ai-input` (the last is used in production by cloudflare.com alongside the IETF draft's keys; keep both until the spec settles). Valid values: `yes`, `no`. If absent, note as a recommendation. This check does not affect the Crawler Access Score — it is a non-scored flag.
 
 ### Step 4: llms.txt Analysis
 
