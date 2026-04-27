@@ -89,58 +89,12 @@
     <rect x="238" y="99" width="16" height="16" rx="2"/>
   </g>
 
-  <!-- Block letter "SEO" - row 2 -->
-  <g fill="url(#textGrad)">
-    <!-- S -->
-    <rect x="40" y="130" width="16" height="16" rx="2"/>
-    <rect x="56" y="130" width="16" height="16" rx="2"/>
-    <rect x="72" y="130" width="16" height="16" rx="2"/>
-    <rect x="88" y="130" width="16" height="16" rx="2"/>
-    <rect x="40" y="146" width="16" height="16" rx="2"/>
-    <rect x="40" y="162" width="16" height="16" rx="2"/>
-    <rect x="56" y="162" width="16" height="16" rx="2"/>
-    <rect x="72" y="162" width="16" height="16" rx="2"/>
-    <rect x="88" y="162" width="16" height="16" rx="2"/>
-    <rect x="88" y="178" width="16" height="16" rx="2"/>
-    <rect x="40" y="194" width="16" height="16" rx="2"/>
-    <rect x="56" y="194" width="16" height="16" rx="2"/>
-    <rect x="72" y="194" width="16" height="16" rx="2"/>
-    <rect x="88" y="194" width="16" height="16" rx="2"/>
+  <!-- "REPORTER" wordmark — row 2 -->
+  <text x="40" y="195" font-family="'Courier New', monospace" font-size="68" font-weight="bold"
+        fill="url(#textGrad)" letter-spacing="2">REPORTER</text>
 
-    <!-- E -->
-    <rect x="115" y="130" width="16" height="16" rx="2"/>
-    <rect x="131" y="130" width="16" height="16" rx="2"/>
-    <rect x="147" y="130" width="16" height="16" rx="2"/>
-    <rect x="163" y="130" width="16" height="16" rx="2"/>
-    <rect x="115" y="146" width="16" height="16" rx="2"/>
-    <rect x="115" y="162" width="16" height="16" rx="2"/>
-    <rect x="131" y="162" width="16" height="16" rx="2"/>
-    <rect x="147" y="162" width="16" height="16" rx="2"/>
-    <rect x="115" y="178" width="16" height="16" rx="2"/>
-    <rect x="115" y="194" width="16" height="16" rx="2"/>
-    <rect x="131" y="194" width="16" height="16" rx="2"/>
-    <rect x="147" y="194" width="16" height="16" rx="2"/>
-    <rect x="163" y="194" width="16" height="16" rx="2"/>
-
-    <!-- O -->
-    <rect x="190" y="130" width="16" height="16" rx="2"/>
-    <rect x="206" y="130" width="16" height="16" rx="2"/>
-    <rect x="222" y="130" width="16" height="16" rx="2"/>
-    <rect x="238" y="130" width="16" height="16" rx="2"/>
-    <rect x="190" y="146" width="16" height="16" rx="2"/>
-    <rect x="238" y="146" width="16" height="16" rx="2"/>
-    <rect x="190" y="162" width="16" height="16" rx="2"/>
-    <rect x="238" y="162" width="16" height="16" rx="2"/>
-    <rect x="190" y="178" width="16" height="16" rx="2"/>
-    <rect x="238" y="178" width="16" height="16" rx="2"/>
-    <rect x="190" y="194" width="16" height="16" rx="2"/>
-    <rect x="206" y="194" width="16" height="16" rx="2"/>
-    <rect x="222" y="194" width="16" height="16" rx="2"/>
-    <rect x="238" y="194" width="16" height="16" rx="2"/>
-  </g>
-
-  <!-- Accent line under block text -->
-  <rect x="40" y="222" width="215" height="3" fill="url(#accent)" rx="1"/>
+  <!-- Accent line under wordmark -->
+  <rect x="40" y="222" width="380" height="3" fill="url(#accent)" rx="1"/>
 
   <!-- Subtitle -->
   <text x="40" y="250" font-family="'Courier New', monospace" font-size="15" fill="#8892b0" letter-spacing="0.5">AI-Powered GEO Analysis</text>

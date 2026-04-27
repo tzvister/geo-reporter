@@ -316,7 +316,7 @@ This proposal is valid for **30 days** from the date above.
 
 ---
 
-*This proposal was prepared using GEO-SEO analysis tools and reflects findings
+*This proposal was prepared using GEO Reporter analysis tools and reflects findings
 from the audit of [DOMAIN] conducted on [DATE]. All scores and recommendations
 are based on current industry best practices for Generative Engine Optimization.*
 ```
