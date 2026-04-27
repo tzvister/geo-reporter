@@ -745,6 +745,17 @@ def probe_ai_crawlers(url: str, timeout: int = 15) -> dict:
         "errors": [],
     }
 
+    # Reject non-http(s) schemes before any network call. Mirrors the
+    # guard in fetch_page() — same threat model (caller-supplied URL,
+    # allow_redirects=True downstream) so the same defence applies.
+    parsed_url = urlparse(url)
+    if parsed_url.scheme not in ("http", "https"):
+        result["errors"].append(
+            f"Unsupported URL scheme: {parsed_url.scheme!r}. "
+            "Only http and https are allowed."
+        )
+        return result
+
     # --- 1. Browser baseline -------------------------------------------------
     try:
         baseline_resp = requests.get(
