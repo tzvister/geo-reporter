@@ -1,0 +1,75 @@
+name: Claude PR Review
+
+# Auto-reviews PRs from outside contributors and any PR explicitly
+# labelled `needs-review`. PRs from owners/members/collaborators are
+# silent by default — add the `needs-review` label to opt in.
+#
+# Uses pull_request_target so the workflow has access to repo secrets
+# even for fork PRs. The action analyses the diff, not executable code,
+# so the standard pull_request_target security caveats don't apply here.
+#
+# Setup checklist:
+#   1. Add ANTHROPIC_API_KEY as a repo secret
+#      (Settings → Secrets and variables → Actions → New repository secret).
+#   2. Optionally create a `needs-review` label
+#      (gh label create needs-review --color FFA500
+#       --description "Trigger Claude review on this PR").
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+
+jobs:
+  review:
+    # Skip silent path for collaborators unless they label-opt-in.
+    # OWNER / MEMBER / COLLABORATOR are trusted; everyone else gets reviewed.
+    if: |
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+                github.event.pull_request.author_association)
+      || contains(github.event.pull_request.labels.*.name, 'needs-review')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Keeps the review focused on what actually matters for this
+          # project. Order is priority — security first, style last.
+          prompt: |
+            You are reviewing a pull request for **GEO Reporter**, a
+            Claude Code skill for Generative Engine Optimization audits.
+
+            Focus your review, in priority order:
+
+            1. **Security** — SSRF, RCE, command injection, hardcoded
+               secrets, unsafe deserialization. Especially look at any
+               `requests.get()` / `subprocess` / `eval` / `exec` calls.
+            2. **Correctness** — does the change do what the PR title
+               and description claim? Any obvious off-by-one, wrong
+               default, or missing edge case?
+            3. **Test coverage** — if Python code changed in `scripts/`,
+               are there matching tests in `tests/`? If a SKILL.md
+               adds a new step, is the workflow described concretely
+               enough to be reproducible?
+            4. **Skill / agent integrity** — for changes in
+               `skills/*/SKILL.md` or `agents/*.md`, verify front-matter
+               (`name`, `description`, `allowed-tools`) is consistent
+               with the directory and intent. References to other
+               skills must resolve to real directories.
+            5. **Style consistency** — match surrounding code; flag
+               unnecessary abstractions or speculative generality.
+
+            Be concise. Lead with the most important findings. If the
+            PR is clean, say so in one line — don't pad. Suggest
+            concrete fixes inline (line-anchored comments) where useful.
+
+            If you spot a security issue at HIGH or CRITICAL severity,
+            label it explicitly so the maintainer can prioritise.
