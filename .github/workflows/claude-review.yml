@@ -54,13 +54,18 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Pass GITHUB_TOKEN explicitly so the action uses it directly
           # instead of attempting an OIDC -> Claude App token exchange.
-          # The exchange path requires the Claude GitHub App to be
-          # installed and accessible to Anthropic's backend; this path
-          # uses the workflow's auto-provisioned token to post comments
-          # as github-actions[bot].
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Keeps the review focused on what actually matters for this
-          # project. Order is priority — security first, style last.
+          # Allowlist the MCP tools Claude needs to actually post the
+          # review. Without these, Claude analyses the PR but the
+          # action's post-comment step finds nothing to post (silent
+          # failure). The inline-comment MCP tool drops line-anchored
+          # findings; gh pr comment posts the summary at the end.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+          # Custom prompt with explicit comment-posting instructions.
+          # The action's default review prompt is replaced when `prompt`
+          # is set, so we have to reinstate the "use the comment tools"
+          # directive ourselves.
           prompt: |
             You are reviewing a pull request for **GEO Reporter**, a
             Claude Code skill for Generative Engine Optimization audits.
@@ -85,9 +90,16 @@ jobs:
             5. **Style consistency** — match surrounding code; flag
                unnecessary abstractions or speculative generality.
 
-            Be concise. Lead with the most important findings. If the
-            PR is clean, say so in one line — don't pad. Suggest
-            concrete fixes inline (line-anchored comments) where useful.
-
-            If you spot a security issue at HIGH or CRITICAL severity,
-            label it explicitly so the maintainer can prioritise.
+            **How to post the review:**
+            - Use `mcp__github_inline_comment__create_inline_comment`
+              with `confirmed: true` for every line-specific finding.
+              This posts comments anchored to specific lines in the diff.
+            - At the end, post a single summary comment via
+              `gh pr comment <number> --body "..."` covering the
+              overall verdict and any cross-cutting concerns.
+            - Be concise. If the PR is clean, post one short summary
+              that says so — don't pad. Skip inline comments when there
+              are no concrete line-level issues.
+            - If you spot a HIGH or CRITICAL severity security issue,
+              label it explicitly in the inline comment so the
+              maintainer can prioritise.
