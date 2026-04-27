@@ -52,6 +52,13 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Pass GITHUB_TOKEN explicitly so the action uses it directly
+          # instead of attempting an OIDC -> Claude App token exchange.
+          # The exchange path requires the Claude GitHub App to be
+          # installed and accessible to Anthropic's backend; this path
+          # uses the workflow's auto-provisioned token to post comments
+          # as github-actions[bot].
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           # Keeps the review focused on what actually matters for this
           # project. Order is priority — security first, style last.
           prompt: |
