@@ -12,7 +12,7 @@ description: >
 allowed-tools: Read, Grep, Glob, Bash, WebFetch, Write
 ---
 
-# GEO-SEO Analysis Tool — Claude Code Skill (February 2026)
+# GEO Reporter — AI Search Analysis for Claude Code
 
 > **Philosophy:** GEO-first, SEO-supported. AI search is eating traditional search.
 > This tool optimizes for where traffic is going, not where it was.

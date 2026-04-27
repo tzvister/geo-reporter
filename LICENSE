@@ -1,6 +1,16 @@
 MIT License
 
+GEO Reporter is a fork of, and is highly influenced by, the upstream
+project "geo-seo-claude" by Zubair Trabzada
+(https://github.com/zubair-trabzada/geo-seo-claude). The upstream
+copyright notice below is preserved as required by the MIT license.
+Modifications and additional work in this fork are © 2026 Tal Oron and
+the GEO Reporter contributors.
+
+----------------------------------------------------------------------
+
 Copyright (c) 2026 Zubair Trabzada
+Copyright (c) 2026 Tal Oron and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
