@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="GEO-SEO Claude Code Skill" width="900"/>
+  <img src="assets/banner.svg" alt="GEO Reporter" width="900"/>
 </p>
+
+<h1 align="center">GEO Reporter</h1>
 
 <p align="center">
   <strong>GEO-first, SEO-supported.</strong> Optimize websites for AI-powered search engines<br/>
@@ -9,6 +11,10 @@
 
 <p align="center">
   AI search is eating traditional search. This tool optimizes for where traffic is going, not where it was.
+</p>
+
+<p align="center">
+  <em>Highly influenced by <a href="https://github.com/zubair-trabzada/geo-seo-claude">zubair-trabzada/geo-seo-claude</a>. This fork is now actively maintained on its own line of development.</em>
 </p>
 
 ---
@@ -31,14 +37,14 @@
 ### One-Command Install (macOS/Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zubair-trabzada/geo-seo-claude/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tzvister/geo-reporter/main/install.sh | bash
 ```
 
 ### Manual Install
 
 ```bash
-git clone https://github.com/zubair-trabzada/geo-seo-claude.git
-cd geo-seo-claude
+git clone https://github.com/tzvister/geo-reporter.git
+cd geo-reporter
 ./install.sh
 ```
 
@@ -48,11 +54,11 @@ Requires [Git for Windows](https://git-scm.com/downloads) which includes Git Bas
 
 ```bash
 # Option 1: One-command install (run from Git Bash, not PowerShell/CMD)
-curl -fsSL https://raw.githubusercontent.com/zubair-trabzada/geo-seo-claude/main/install-win.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tzvister/geo-reporter/main/install-win.sh | bash
 
 # Option 2: Manual install
-git clone https://github.com/zubair-trabzada/geo-seo-claude.git
-cd geo-seo-claude
+git clone https://github.com/tzvister/geo-reporter.git
+cd geo-reporter
 ./install-win.sh
 ```
 
@@ -91,7 +97,7 @@ Open Claude Code and use these commands:
 ## Architecture
 
 ```
-geo-seo-claude/
+geo-reporter/
 ├── geo/                          # Main skill orchestrator
 │   └── SKILL.md                  # Primary skill file with commands & routing
 ├── skills/                       # 13 specialized sub-skills
@@ -228,31 +234,15 @@ rm -rf ~/.claude/skills/geo ~/.claude/skills/geo-* ~/.claude/agents/geo-*.md
 
 ---
 
-## Want to Turn This Into a Business?
-
-The tool is free. Learning how to monetize it is where the community comes in.
-
-**[Join the AI Workshop Community →](https://skool.com/aiworkshop)**
-
-Inside you'll get:
-- **Video walkthroughs** — Step-by-step setup, running audits, reading results
-- **Client acquisition playbook** — How to find prospects, pitch GEO services, and close deals
-- **Live office hours** — Bring your audit results, get direct help
-- **GEO agency pricing & templates** — Proposal docs, cold outreach scripts, onboarding workflows
-
-GEO agencies charge $2K–$12K/month. This tool does the audit. The community teaches you how to sell it.
-
----
-
 ## License
 
-MIT License
+MIT License — see [LICENSE](LICENSE) for the full text and the upstream attribution notice.
 
 ---
 
 ## Contributing
 
-Contributions welcome!
+Issues and PRs welcome. This fork is actively maintained — bug reports, new bot-class definitions as labs publish them, schema additions, and platform-readiness updates are all in scope.
 
 ---
 

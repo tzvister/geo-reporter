@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # ============================================================
-# GEO-SEO Claude Code Skill Installer
-# Installs the GEO-first SEO analysis tool for Claude Code
+# GEO Reporter — Claude Code Skill Installer
+# Installs the GEO-first SEO analysis tool for Claude Code.
+# Highly influenced by zubair-trabzada/geo-seo-claude.
 # ============================================================
 
-REPO_URL="https://github.com/zubair-trabzada/geo-seo-claude.git"
+REPO_URL="https://github.com/tzvister/geo-reporter.git"
 CLAUDE_DIR="${HOME}/.claude"
 SKILLS_DIR="${CLAUDE_DIR}/skills"
 AGENTS_DIR="${CLAUDE_DIR}/agents"
@@ -29,7 +30,7 @@ NC='\033[0m' # No Color
 print_header() {
     echo ""
     echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   GEO-SEO Claude Code Skill Installer    ║${NC}"
+    echo -e "${BLUE}║      GEO Reporter — Claude Code Skill    ║${NC}"
     echo -e "${BLUE}║   GEO-First AI Search Optimization       ║${NC}"
     echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
     echo ""
@@ -125,7 +126,7 @@ main() {
     print_success "Directory structure created"
 
     # ---- Clone or Copy Repository ----
-    print_info "Fetching GEO-SEO skill files..."
+    print_info "Fetching GEO Reporter skill files..."
 
     # Check if running from the repo directory (local install)
     # BASH_SOURCE may be empty when piped via curl, so handle gracefully
@@ -286,7 +287,7 @@ main() {
     echo "    /geo report <url>     Client-ready GEO report"
     echo "    /geo report-pdf       Generate PDF report from audit data"
     echo ""
-    echo "  Documentation: https://github.com/zubair-trabzada/geo-seo-claude"
+    echo "  Documentation: https://github.com/tzvister/geo-reporter"
     echo ""
 }
 
