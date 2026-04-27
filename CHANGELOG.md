@@ -8,6 +8,32 @@ GEO Reporter is a fork of, and is highly influenced by, [zubair-trabzada/geo-seo
 
 ## [Unreleased]
 
+### Added
+
+- **Content Signals check** ([#4](https://github.com/tzvister/geo-reporter/pull/4)) — non-scoring scan for `Content-Signal:` directives in robots.txt (IETF draft `draft-romm-aipref-contentsignals`). Surfaced in `geo-crawlers` Step 6 and `geo-ai-visibility` Step 3. Reuses the already-fetched robots.txt, no extra HTTP request.
+- **Agent-readiness signals in `geo-technical`** ([#4](https://github.com/tzvister/geo-reporter/pull/4)) — RFC 8288 `Link:` header parsing for `api-catalog` / `service-doc` / `mcp-server-card` rel types (no extra request, captured in the existing Step 1 fetch), plus an opt-in `Accept: text/markdown` content-negotiation probe (one extra request, non-penalising). Both are non-scoring.
+- **`ai-input` recognised as a Content-Signal key** ([#7](https://github.com/tzvister/geo-reporter/pull/7)) — used in production by cloudflare.com alongside the IETF draft's keys. Added to the valid-keys enumeration to avoid false-positive "unknown key" warnings on the canonical reference site.
+- **`CONTRIBUTING.md`** ([#6](https://github.com/tzvister/geo-reporter/pull/6)) — review-cadence SLA (~7 days), fork-and-PR flow, attribution policy for ported commits, MIT licensing note. Adapted from upstream PR #44 by @ahernandez-developer with author attribution preserved on the commit.
+- **Claude PR review workflow** ([#8](https://github.com/tzvister/geo-reporter/pull/8)) — `.github/workflows/claude-review.yml` auto-reviews PRs from outside contributors and any PR with the `needs-review` label.
+- **`needs-review` label** for opting your own PRs into Claude review.
+
+### Changed
+
+- **Report filenames now include the audited domain slug** ([#5](https://github.com/tzvister/geo-reporter/pull/5)) — `GEO-CLIENT-REPORT-<DOMAIN-SLUG>.md` and `GEO-REPORT-<DOMAIN-SLUG>.pdf` (e.g. `acme.com` → `ACME-COM`). Fixes silent overwrites when running multiple audits in the same directory. Convention propagated through `geo/SKILL.md`, `skills/geo-report/SKILL.md`, and `skills/geo-report-pdf/SKILL.md`.
+
+### Fixed
+
+- **Broken `geo-llms-txt` skill reference** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#50](https://github.com/zubair-trabzada/geo-seo-claude/pull/50)) — `skills/geo-report/SKILL.md` referenced a non-existent skill, silently dropping llms.txt assessment from generated reports. Corrected to `geo-llmstxt`.
+- **Pin `rich<14.0.0`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#54](https://github.com/zubair-trabzada/geo-seo-claude/pull/54)) — the previous `<15.0.0` constraint allowed silent major-version bumps to rich 14.x.
+
+### Security
+
+- **Disable Flask debug mode by default** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#51](https://github.com/zubair-trabzada/geo-seo-claude/pull/51)) — `scripts/webapp/app.py` previously hardcoded `debug=True`, exposing the Werkzeug interactive debugger (RCE-equivalent if reachable). Now opt-in via `FLASK_DEBUG=true` env var.
+- **Validate URL scheme in `fetch_page()`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#52](https://github.com/zubair-trabzada/geo-seo-claude/pull/52)) — reject `file://` / `ftp://` / non-http schemes before any network call. Closes the SSRF vector when caller-supplied URLs reach `requests.get(allow_redirects=True)`.
+- **Extend URL-scheme guard to `probe_ai_crawlers()`** ([#3](https://github.com/tzvister/geo-reporter/pull/3)) — same threat model as `fetch_page()`, same defence applied.
+- **Domain-pin URLs in `llmstxt_generator`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#53](https://github.com/zubair-trabzada/geo-seo-claude/pull/53)) — second-pass description fetcher previously trusted URLs discovered during crawl. Now skips cross-origin URLs (still emits the link in llms-full.txt, just doesn't fetch a description for it).
+- **Bound stdin reads in `generate_pdf_report.py`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#54](https://github.com/zubair-trabzada/geo-seo-claude/pull/54)) — 10 MB ceiling with overflow detection (`read(N+1)` pattern). Prevents OOM from oversized stdin pipes.
+
 ## [0.1.0] — 2026-04-27
 
 Inaugural release of GEO Reporter as a distinct project.
