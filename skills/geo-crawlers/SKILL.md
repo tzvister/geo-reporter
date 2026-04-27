@@ -272,7 +272,7 @@ Using the already-fetched robots.txt from Step 1, scan for `Content-Signal:` dir
 1. Scan every line for a line starting with `Content-Signal:` (case-insensitive).
 2. If found:
    - Parse all key=value pairs (split on `,` then on `=`).
-   - Validate keys against the known set: `ai-train`, `search`, `ai-personalization`, `ai-retrieval`.
+   - Validate keys against the known set: `ai-train`, `search`, `ai-personalization`, `ai-retrieval`, `ai-input`. (`ai-input` is used in production by cloudflare.com and appears alongside the IETF draft's keys; keep both until the spec settles.)
    - Validate values: only `yes` and `no` are valid.
    - Flag any unknown keys or invalid values as a warning — the spec is still an IETF draft.
    - Record the result as **Pass** and surface parsed values with plain-English meaning.
