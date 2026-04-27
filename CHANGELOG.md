@@ -8,6 +8,47 @@ GEO Reporter is a fork of, and is highly influenced by, [zubair-trabzada/geo-seo
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-27
+
+**Theme: community integration.** Every open contribution from upstream that's still useful has been ported in (with author attribution preserved on each commit), the project's contribution surface is now operational (CONTRIBUTING.md, CHANGELOG, automated review), and the workflow that runs Claude on PRs has been hardened through 4 iterations of empirical testing.
+
+### Added
+
+- **Content Signals check** ([#4](https://github.com/tzvister/geo-reporter/pull/4)) — non-scoring scan for `Content-Signal:` directives in robots.txt (IETF draft `draft-romm-aipref-contentsignals`). Surfaced in `geo-crawlers` Step 6 and `geo-ai-visibility` Step 3. Reuses the already-fetched robots.txt, no extra HTTP request. Ports work by [@an-morgan](https://github.com/an-morgan).
+- **Agent-readiness signals in `geo-technical`** ([#4](https://github.com/tzvister/geo-reporter/pull/4)) — RFC 8288 `Link:` header parsing for `api-catalog` / `service-doc` / `mcp-server-card` rel types (no extra request, captured in the existing Step 1 fetch), plus an opt-in `Accept: text/markdown` content-negotiation probe (one extra request, non-penalising). Both are non-scoring.
+- **`ai-input` recognised as a Content-Signal key** ([#7](https://github.com/tzvister/geo-reporter/pull/7)) — used in production by cloudflare.com alongside the IETF draft's keys. Empirically validated against the canonical reference site.
+- **`CONTRIBUTING.md`** ([#6](https://github.com/tzvister/geo-reporter/pull/6)) — review-cadence SLA (~7 days), fork-and-PR flow, attribution policy for ported commits, MIT licensing note. Adapted from upstream PR #44 by [@ahernandez-developer](https://github.com/ahernandez-developer); commit author preserved.
+- **Claude PR review workflow** ([#8](https://github.com/tzvister/geo-reporter/pull/8), iterated through #10–#13) — `.github/workflows/claude-review.yml` runs Claude on PRs labelled `needs-review`. Manual-trigger only (outside contributors cannot self-trigger), path-filtered to skip docs-only PRs, capped at 25 turns per review (~$0.20–0.50 per run, 2–5 min runtime). Posts inline comments via the GitHub MCP tool plus a summary comment. Uses Sonnet for code-review depth.
+- **`needs-review` label** for opting PRs into the Claude review workflow.
+- **Repo metadata** — Issues and Discussions enabled; About description, topics, and homepage URL refreshed.
+
+### Changed
+
+- **Report filenames now include the audited domain slug** ([#5](https://github.com/tzvister/geo-reporter/pull/5)) — `GEO-CLIENT-REPORT-<DOMAIN-SLUG>.md` and `GEO-REPORT-<DOMAIN-SLUG>.pdf` (e.g. `acme.com` → `ACME-COM`). Fixes silent overwrites when running multiple audits in the same directory. Convention propagated through `geo/SKILL.md`, `skills/geo-report/SKILL.md`, and `skills/geo-report-pdf/SKILL.md`.
+
+### Fixed
+
+- **Broken `geo-llms-txt` skill reference** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#50](https://github.com/zubair-trabzada/geo-seo-claude/pull/50) by [@xiaolai](https://github.com/xiaolai)) — `skills/geo-report/SKILL.md` referenced a non-existent skill, silently dropping llms.txt assessment from generated reports. Corrected to `geo-llmstxt`.
+- **Pin `rich<14.0.0`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#54](https://github.com/zubair-trabzada/geo-seo-claude/pull/54)) — the previous `<15.0.0` constraint allowed silent major-version bumps to rich 14.x.
+
+### Security
+
+- **Disable Flask debug mode by default** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#51](https://github.com/zubair-trabzada/geo-seo-claude/pull/51)) — `scripts/webapp/app.py` previously hardcoded `debug=True`, exposing the Werkzeug interactive debugger (RCE-equivalent if reachable). Now opt-in via `FLASK_DEBUG=true` env var.
+- **Validate URL scheme in `fetch_page()`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#52](https://github.com/zubair-trabzada/geo-seo-claude/pull/52)) — reject `file://` / `ftp://` / non-http schemes before any network call. Closes the SSRF vector when caller-supplied URLs reach `requests.get(allow_redirects=True)`.
+- **Extend URL-scheme guard to `probe_ai_crawlers()`** ([#3](https://github.com/tzvister/geo-reporter/pull/3)) — same threat model as `fetch_page()`, same defence applied.
+- **Domain-pin URLs in `llmstxt_generator`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#53](https://github.com/zubair-trabzada/geo-seo-claude/pull/53)) — second-pass description fetcher previously trusted URLs discovered during crawl. Now skips cross-origin URLs (still emits the link in llms-full.txt, just doesn't fetch a description for it).
+- **Bound stdin reads in `generate_pdf_report.py`** ([#3](https://github.com/tzvister/geo-reporter/pull/3) — upstream PR [#54](https://github.com/zubair-trabzada/geo-seo-claude/pull/54)) — 10 MB ceiling with overflow detection (`read(N+1)` pattern). Prevents OOM from oversized stdin pipes.
+
+### Contributors
+
+Upstream work ported with author attribution preserved on the commits:
+
+- [@xiaolai](https://github.com/xiaolai) — five security/bug fixes via NLPM
+- [@an-morgan](https://github.com/an-morgan) — Content Signals + agent-readiness checks
+- [@ahernandez-developer](https://github.com/ahernandez-developer) — CONTRIBUTING.md scaffold
+
+Plus the original [zubair-trabzada/geo-seo-claude](https://github.com/zubair-trabzada/geo-seo-claude) upstream, whose work this fork was built on.
+
 ## [0.1.0] — 2026-04-27
 
 Inaugural release of GEO Reporter as a distinct project.
@@ -39,5 +80,6 @@ Inaugural release of GEO Reporter as a distinct project.
 - Upstream-author Skool community funnel section in README, replaced with a neutral Contributing stub.
 - `geo-seo-claude` branding from rendered output across CLI banners, PDF report headers, and webapp page titles.
 
-[Unreleased]: https://github.com/tzvister/geo-reporter/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/tzvister/geo-reporter/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/tzvister/geo-reporter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/tzvister/geo-reporter/releases/tag/v0.1.0
