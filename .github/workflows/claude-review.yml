@@ -19,6 +19,13 @@ on:
   pull_request_target:
     types: [opened, reopened, synchronize, labeled]
 
+# Dedupe runs when multiple events fire close together (e.g. a PR
+# opened with a label triggers both `opened` and `labeled`). Cancel
+# the older run so we only review the latest state once.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     # Skip silent path for collaborators unless they label-opt-in.
@@ -32,6 +39,10 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      # Required by claude-code-action to fetch an OIDC token for
+      # authenticating with the Anthropic API. Without this the action
+      # fails at the setupGitHubToken step.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
