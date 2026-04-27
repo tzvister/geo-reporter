@@ -1,6 +1,6 @@
 ---
 name: geo-botaccess
-description: Live AI crawler reachability test. Probes a website with real AI bot user-agents (GPTBot, ClaudeBot, PerplexityBot, Googlebot, Bingbot, etc.) to detect WAF/Cloudflare blocking that static robots.txt analysis cannot see. Use this skill whenever the user asks "can ChatGPT/Claude/Perplexity read my site", "is GPTBot/Googlebot blocked on X", "is Cloudflare blocking AI bots", "WAF blocking AI crawlers", "why isn't my site showing up in AI answers", "test bot access", "re-check after I fixed the WAF rule", or wants any empirical test of AI crawler reachability on a specific URL. Unlike geo-crawlers which reads declared policy, this skill measures what bots actually receive — perfect for the iterative fix-and-retest loop.
+description: Live AI crawler reachability test, classified by bot purpose. Probes a website with 17 AI bot user-agents across four classes — live-retrieval (ChatGPT-User, Claude-User, Perplexity-User), search-index (OAI-SearchBot, Claude-SearchBot, PerplexityBot), traditional-search (Googlebot, Bingbot), and training (GPTBot, ClaudeBot, CCBot, Google-Extended, etc.) — to detect WAF/Cloudflare blocking that static robots.txt analysis cannot see. Reports per-class scores so a publisher posture (block training, allow retrieval) reads as healthy. Use whenever the user asks "can ChatGPT/Claude/Perplexity read my site", "is OAI-SearchBot/GPTBot/Googlebot blocked on X", "is Cloudflare blocking AI bots", "why isn't my site showing up in AI answers / ChatGPT search / Perplexity citations", "test bot access", "re-check after I fixed the WAF rule", or wants any empirical test of AI crawler reachability. Unlike geo-crawlers which reads declared policy, this skill measures what bots actually receive — perfect for the iterative fix-and-retest loop.
 version: 1.0.0
 author: geo-seo-claude
 tags: [geo, ai-crawlers, waf, cloudflare, bot-access, empirical]
@@ -32,6 +32,19 @@ Use it any time the user wants ground-truth AI crawler reachability for a specif
 
 If the user only wants a static review of `robots.txt` directives, prefer `geo-crawlers`. If the user wants the full GEO audit, use `geo-audit` (which calls `geo-technical`, which calls this same probe internally — so the bot check is included automatically).
 
+## Bot classes — why this matters
+
+The probe groups bots into four classes because lab fleets are split by purpose, and the GEO impact of blocking differs sharply between them. A site that blocks training while allowing retrieval (the NYT/WSJ/Reuters/BBC pattern) is the canonical *healthy publisher* posture — flat scoring would mislabel it as "partially blocked".
+
+| Class | Bots | What blocking does to GEO |
+|---|---|---|
+| **Live-retrieval** | ChatGPT-User, Claude-User, Perplexity-User | **Highest impact.** These fetch a page on demand when a user asks a question. Blocking removes user-triggered citations entirely. |
+| **Search-index** | OAI-SearchBot, Claude-SearchBot, PerplexityBot | **High impact.** These index pages for AI search results. Blocking removes the site from ChatGPT Search / Claude / Perplexity citations. Botify 2025 logs show OAI-SearchBot is ~256% more active on news/publishing sites than GPTBot — for publishers, this is the bot that matters. |
+| **Traditional search** | GoogleBot, BingBot | **High impact, separate concern.** Blocking these kills regular Google/Bing indexing, which also feeds Google AI Overviews and Bing/Copilot. Almost always unintentional — flag loudly. |
+| **Training** | GPTBot, ClaudeBot, anthropic-ai, Google-Extended, Applebot-Extended, CCBot, Bytespider, Meta-ExternalAgent, cohere-ai | **Near-zero GEO impact.** Lab docs explicitly state this content is not used in live answers. Many publishers block these intentionally and still appear in AI citations. **Do not recommend unblocking.** |
+
+The single most valuable finding this skill produces is the asymmetric mismatch: **retrieval/search bots blocked at the WAF while training bots pass cleanly.** That pattern is invisible to flat reachability tools, and it's exactly the configuration that silently removes a site from AI answers while a robots.txt review looks fine.
+
 ## How it works
 
 The probe is implemented as the `bots` mode of `scripts/fetch_page.py`. It does the following in one pass:
@@ -39,10 +52,11 @@ The probe is implemented as the `bots` mode of `scripts/fetch_page.py`. It does 
 1. **Browser baseline** — fetches the URL with a normal Chrome user-agent so we know what real content looks like (size, body, headers).
 2. **JS challenge detection** — checks the baseline body for Cloudflare challenge markers (`cf-challenge`, `cf-turnstile`, "checking your browser", etc.). If a challenge is detected, the probe transparently falls back to a Playwright headless browser fetch so the comparison baseline is real content rather than a block page. If Playwright isn't installed, the probe degrades gracefully and switches to status-only block detection.
 3. **WAF / CDN fingerprinting** — inspects the baseline response headers and `Set-Cookie` to identify which security product is in front of the site. Detects Cloudflare, Akamai, Imperva Incapsula, Sucuri, AWS CloudFront, AWS WAF, AWS ELB, F5 BIG-IP, F5 BIG-IP ASM, Fastly, Azure Front Door, Barracuda, Wallarm, StackPath, Google Frontend. Identifying the specific product matters because remediation differs completely per product — see "Recommendation playbooks" below.
-4. **Per-bot probes** — replays the request with each of 13 AI crawler user-agents (GPTBot, ChatGPT-User, ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended, Applebot-Extended, GoogleBot, BingBot, CCBot, Bytespider, Meta-ExternalAgent, cohere-ai). For each bot the probe records HTTP status, body length, and content similarity to the baseline. A bot is considered blocked if any of:
+4. **Per-bot probes** — replays the request with each of 17 AI crawler user-agents across the four classes above. For each bot the probe records HTTP status, body length, content similarity to the baseline, **and the bot's class and operator**. A bot is considered blocked if any of:
    - status is 403, 406, 429, or 503
    - body matches Cloudflare challenge markers (the "200 OK with a disguised block page" case)
    - body is non-trivially smaller AND content similarity to baseline is suspiciously low (silent content stripping)
+5. **Per-class scoring** — each class scores 0–100 independently based on the share of blocked bots in that class. The overall score weights retrieval (live + search) at 0.5, traditional search at 0.35, and training at 0.15. A JS-challenge-with-no-Playwright penalty (–30) is applied to the retrieval and search classes only, since non-browser bots can't bypass interstitials.
 
 ## Workflow
 
@@ -65,14 +79,26 @@ The output is a single JSON object with this shape:
   "js_challenge_detected": true,
   "wafs_detected": [{"product": "Cloudflare", "evidence": "cf-ray header"}],
   "probes": [
-    {"bot": "GPTBot", "status": 200, "length": 513540, "similarity": 0.85, "blocked": false, "block_reason": null},
-    {"bot": "GoogleBot", "status": 403, "length": 673193, "similarity": null, "blocked": true, "block_reason": "http_403"}
+    {"bot": "GPTBot", "class": "training", "operator": "OpenAI",
+     "status": 200, "length": 513540, "similarity": 0.85,
+     "blocked": false, "block_reason": null},
+    {"bot": "OAI-SearchBot", "class": "search-index", "operator": "OpenAI",
+     "status": 403, "length": 673, "similarity": null,
+     "blocked": true, "block_reason": "http_403"}
   ],
+  "class_scores": {
+    "live-retrieval":     {"total": 3, "blocked": 0, "score": 100},
+    "search-index":       {"total": 3, "blocked": 3, "score": 0},
+    "traditional-search": {"total": 2, "blocked": 0, "score": 100},
+    "training":           {"total": 9, "blocked": 9, "score": 0}
+  },
+  "verdict": "MOSTLY_BLOCKED",
+  "overall_score": 60,
   "errors": []
 }
 ```
 
-Parse this JSON in Bash with `python -c` or `jq`. Don't re-fetch the URL — the JSON is the source of truth.
+Parse this JSON in Bash with `python -c` or `jq`. Don't re-fetch the URL — the JSON is the source of truth. The `class` and `operator` fields on each probe are the primary axis for grouping the report.
 
 ### Step 2 — Cross-reference declared policy
 
@@ -91,30 +117,33 @@ Then walk every entry in `probes[]` from Step 1 and compare against the declared
 | Allowed | Disallowed | Soft mismatch. Site is technically reachable but the bot is supposed to honour robots.txt. Worth mentioning. |
 | Blocked | Disallowed | Consistent. Likely intentional. No action unless the user wants to change policy. |
 
-The mismatch case (live blocked + declared allowed) is the most valuable finding this skill produces. It exists *only* because we're doing live probing — static analysis would have missed it entirely.
+**Prioritise mismatches by class.** A "blocked + allowed" finding for a **search-index or live-retrieval** bot is the headline finding — that's the exact configuration that silently removes a site from AI answers. Mismatches on training bots are footnote-tier; mention them only if the user is doing a deep audit. Mismatches on traditional-search bots (Googlebot/Bingbot) get their own prominent callout regardless of class — see Step 4.
 
-### Step 3 — Score and verdict
+### Step 3 — Read the score and verdict
 
-Compute a simple score from the probe results so the user has a single number to track across iterations. Recommended scoring (this is intentionally lightweight — `geo-technical` and `geo-audit` have richer scoring):
+The probe emits per-class scores and an overall verdict. **Don't recompute them** — they're in the JSON. Use the verdict directly as the headline.
 
-- Start at 100
-- Subtract 10 for each blocked bot in `AI_SEARCH_BOTS` (GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, GoogleBot, BingBot)
-- Subtract 3 for each blocked training-only crawler (CCBot, Bytespider, Meta-ExternalAgent, cohere-ai, anthropic-ai)
-- Subtract 30 if `js_challenge_detected` is true and `baseline.used_playwright` is false (the site is invisible to non-browser clients and we couldn't even bypass it for the scan)
-- Floor at 0
+Verdict mapping (from `class_scores.live-retrieval`, `search-index`, `traditional-search`, `training`):
 
-Then assign a verdict:
+| Verdict | Meaning | When it fires |
+|---|---|---|
+| `OPEN` | Everything reachable, including training | retrieval ≥ 90 AND traditional ≥ 90 AND training ≥ 70 |
+| `HEALTHY_PUBLISHER` | Retrieval and traditional fully open; training blocked deliberately | retrieval ≥ 90 AND traditional ≥ 90 AND training < 70 |
+| `PARTIALLY_BLOCKED` | Some retrieval/search bots blocked | retrieval ≥ 70 AND traditional ≥ 70 |
+| `MOSTLY_BLOCKED` | Major retrieval or search loss | retrieval ≥ 40 OR traditional ≥ 40 |
+| `BLOCKED` | Site invisible to AI search | everything below 40 |
 
-| Score | Verdict |
-|---|---|
-| 90–100 | OPEN |
-| 70–89 | PARTIALLY BLOCKED |
-| 50–69 | MOSTLY BLOCKED |
-| 0–49 | BLOCKED |
+**`HEALTHY_PUBLISHER` is the canonical NYT/WSJ/Reuters/BBC posture and is a *good* result for GEO.** Do not recommend unblocking training bots when this verdict fires — it's intentional and well-supported by 2025 publisher-log analyses (Botify, Cloudflare, TollBit). Mention the posture is healthy and move on to any actual mismatches.
+
+The `overall_score` field is a single number for tracking iteration-over-iteration progress. Use the verdict as the qualitative headline; use the score for diff comparisons.
 
 ### Step 4 — Generate recommendations
 
 Recommendations should be concrete and product-specific. Use the WAF fingerprint from `wafs_detected` to give the user the exact dashboard path or config snippet for the product they're actually running.
+
+**Recommend by class, not by bot.** Group blocked bots by class first, then by operator. A user-facing recommendation should read like *"Cloudflare is blocking your live-retrieval bots (ChatGPT-User, Claude-User, Perplexity-User) — this directly removes you from on-demand AI citations"*, not a flat list of 12 bot names. The class context tells the user how much it matters.
+
+**Do not recommend unblocking training bots.** If the only blocked bots are in the `training` class and the verdict is `HEALTHY_PUBLISHER`, the right report is *"Your retrieval and search bots are reachable; training bots are blocked, which is intentional and matches the major-publisher pattern. No action needed."* The 2025 GEO consensus (Aleyda Solis, iPullRank, Ahrefs, Semrush, Cloudflare) treats training-blocking as orthogonal to AI visibility.
 
 #### Recommendation playbooks
 
@@ -167,12 +196,13 @@ Recommendations should be concrete and product-specific. Use the WAF fingerprint
 
 Present the findings as:
 
-1. A one-line headline: `Score: X/100 — VERDICT`
+1. A one-line headline: `Verdict: <VERDICT> — overall <X>/100`
 2. The WAF/CDN line (e.g. `Behind: Cloudflare (cf-ray header)`)
-3. A compact table of bots and their results, with `✓` for allowed and `✗` for blocked
-4. The "declared vs actual" mismatch section if any mismatches exist
-5. Prioritised recommendations (Critical → High → Medium)
-6. Suggested next action for the user (e.g. "Want me to draft the Cloudflare WAF rule?", or "Run again after the fix to verify")
+3. **Per-class score line:** `Live-retrieval 100 · Search-index 0 · Traditional-search 100 · Training 0` — one row, four numbers, so the user sees at a glance which class is in trouble.
+4. **Four bot tables, one per class**, in this order: Live-retrieval, Search-index, Traditional-search, Training. Within each table, rows have `bot · operator · status · ✓/✗`. Collapse the Training table to a one-liner (`Training: 9/9 blocked — see "training-blocked is healthy" note above`) when the verdict is `HEALTHY_PUBLISHER`, since the detail isn't actionable.
+5. The "declared vs actual" mismatch section, **with retrieval/search mismatches first** and training mismatches last (or omitted when verdict is `HEALTHY_PUBLISHER`).
+6. Prioritised recommendations grouped by class (Critical = retrieval/search/traditional blocked → Medium = training mismatches → Info = healthy postures to keep).
+7. Suggested next action for the user (e.g. "Want me to draft the Cloudflare WAF rule for OAI-SearchBot?", or "Re-run after the fix to verify").
 
 Keep it scannable. The user is iterating — they want to see the score change, find the new findings, and act, not read prose.
 
@@ -182,7 +212,10 @@ Keep it scannable. The user is iterating — they want to see the score change, 
 - **Rate limiting vs bot blocking** — if the same bot returns 200 on one run and 429 on the next, the site may be rate-limiting rather than bot-blocking. The probe flags 429 as blocked, which is a reasonable simplification but worth mentioning if the pattern looks time-based.
 - **JS challenge baseline degradation** — if `js_challenge_detected` is true and `baseline.used_playwright` is false, the similarity-based block detection becomes unreliable (every response is being compared against a challenge page). Status-code detection still works, but warn the user that the report is best-effort.
 - **Identical responses across bots** — if every bot returns the same response (whether 200 or 403), it's likely UA-agnostic — either fully open or fully blocked at a layer that doesn't inspect User-Agent (IP-based, geo-based). Mention this so the user looks in the right place.
+- **Google-Extended and Applebot-Extended are signals, not crawlers.** Google and Apple don't actually issue HTTP requests with these user-agents — they're robots.txt tokens that signal "don't use this content for training." The probe still tests them so the report is complete, but a 200 or 403 here only tells you about WAF UA filtering, not about whether the operator actually honours the opt-out. Treat results as informational.
+- **`anthropic-ai` is legacy.** Anthropic's current docs list ClaudeBot, Claude-User, Claude-SearchBot. The `anthropic-ai` user-agent appears deprecated; conservative practice is to keep it blocked regardless. The probe still tests it for backwards-compat with older configurations.
+- **Bot-class definitions can drift.** Lab fleets are policy-defined and can shift without announcement (OpenAI revised ChatGPT-User policy mid-2025 without notice). Re-audit lab documentation every ~90 days for the high-stakes classes (live-retrieval, search-index). The four-class structure here matches OpenAI/Anthropic/Perplexity as of 2026 — verify before relying on it.
 
 ## Re-running for iteration
 
-This skill is designed for the fix-and-retest loop. When the user reports making a change (e.g. "I added the Cloudflare rule"), simply re-invoke `python scripts/fetch_page.py <url> bots` and diff against the previous run. The score is directly comparable. The fastest user-facing summary is: "Score went from 50 to 90. GPTBot, ClaudeBot, Googlebot all now returning 200. Cloudflare WAF rule is working."
+This skill is designed for the fix-and-retest loop. When the user reports making a change (e.g. "I added the Cloudflare rule"), simply re-invoke `python scripts/fetch_page.py <url> bots` and diff against the previous run. **Diff per-class scores rather than just the overall** — the most informative deltas are per-class (e.g. "live-retrieval went from 0 to 100, training stayed at 0 (intentional)"). The fastest user-facing summary is: "Live-retrieval 0 → 100, Search-index 0 → 100. ChatGPT-User, Claude-User, Perplexity-User now 200. Cloudflare WAF rule is working."

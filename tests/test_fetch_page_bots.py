@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from fetch_page import (  # noqa: E402
     AI_CRAWLERS,
+    BOT_CLASSES,
     detect_waf,
     is_challenge_page,
     _content_similarity,
@@ -378,3 +379,122 @@ class TestProbeAiCrawlersErrorHandling:
             p["block_reason"].startswith("request_error")
             for p in result["probes"]
         )
+
+
+# ---------------------------------------------------------------------------
+# Bot-class metadata + per-class scoring + verdict
+# ---------------------------------------------------------------------------
+
+class TestBotClassMetadata:
+    """Each bot in AI_CRAWLERS carries a class and operator; probes echo them."""
+
+    def test_every_bot_has_a_known_class(self):
+        for name, meta in AI_CRAWLERS.items():
+            assert meta["class"] in BOT_CLASSES, (
+                f"{name} has unknown class {meta['class']!r}"
+            )
+            assert meta["operator"], f"{name} missing operator"
+            assert meta["ua"].strip(), f"{name} missing user-agent"
+
+    def test_each_class_has_at_least_one_bot(self):
+        present = {meta["class"] for meta in AI_CRAWLERS.values()}
+        for cls in BOT_CLASSES:
+            assert cls in present, f"no bots tagged {cls}"
+
+    def test_known_bots_are_correctly_classified(self):
+        # Spot-check the assignments that drive the GEO scoring logic.
+        # These are the canonical mappings from OpenAI/Anthropic/Perplexity
+        # bot docs — getting these wrong would silently skew every report.
+        expected = {
+            "GPTBot": "training",
+            "ClaudeBot": "training",
+            "CCBot": "training",
+            "OAI-SearchBot": "search-index",
+            "Claude-SearchBot": "search-index",
+            "PerplexityBot": "search-index",
+            "ChatGPT-User": "live-retrieval",
+            "Claude-User": "live-retrieval",
+            "Perplexity-User": "live-retrieval",
+            "GoogleBot": "traditional-search",
+            "BingBot": "traditional-search",
+        }
+        for bot, cls in expected.items():
+            assert AI_CRAWLERS[bot]["class"] == cls, (
+                f"{bot} should be {cls}, got {AI_CRAWLERS[bot]['class']}"
+            )
+
+    def test_probes_carry_class_and_operator(self):
+        baseline = _resp(status=200, text=BASELINE_HTML)
+        bot_responses = [_resp(status=200, text=BASELINE_HTML)
+                         for _ in AI_CRAWLERS]
+        with patch("fetch_page.requests.get",
+                   side_effect=[baseline] + bot_responses):
+            result = probe_ai_crawlers("http://example.com/")
+
+        for probe in result["probes"]:
+            meta = AI_CRAWLERS[probe["bot"]]
+            assert probe["class"] == meta["class"]
+            assert probe["operator"] == meta["operator"]
+
+
+class TestVerdictLogic:
+    """Per-class scoring + verdict cover the canonical GEO postures."""
+
+    def _probe_with_class_blocks(self, blocked_classes):
+        """Build a probe result where bots in `blocked_classes` get 403."""
+        baseline = _resp(status=200, text=BASELINE_HTML)
+        bot_responses = []
+        for name, meta in AI_CRAWLERS.items():
+            if meta["class"] in blocked_classes:
+                bot_responses.append(_resp(status=403, text="blocked"))
+            else:
+                bot_responses.append(_resp(status=200, text=BASELINE_HTML))
+        with patch("fetch_page.requests.get",
+                   side_effect=[baseline] + bot_responses):
+            return probe_ai_crawlers("http://example.com/")
+
+    def test_open_when_nothing_blocked(self):
+        result = self._probe_with_class_blocks(set())
+        assert result["verdict"] == "OPEN"
+        assert result["overall_score"] == 100
+        for cls in BOT_CLASSES:
+            assert result["class_scores"][cls]["score"] == 100
+
+    def test_healthy_publisher_when_only_training_blocked(self):
+        # NYT/WSJ/Reuters/BBC pattern: training blocked, retrieval open.
+        # Verdict must read as healthy, not as "partially blocked".
+        result = self._probe_with_class_blocks({"training"})
+        assert result["verdict"] == "HEALTHY_PUBLISHER"
+        assert result["class_scores"]["live-retrieval"]["score"] == 100
+        assert result["class_scores"]["search-index"]["score"] == 100
+        assert result["class_scores"]["traditional-search"]["score"] == 100
+        assert result["class_scores"]["training"]["score"] == 0
+
+    def test_blocked_when_retrieval_and_search_blocked(self):
+        result = self._probe_with_class_blocks(
+            {"live-retrieval", "search-index", "traditional-search"}
+        )
+        # Retrieval and traditional are 0; training is 100.
+        # overall = 0.5*0 + 0.35*0 + 0.15*100 = 15
+        assert result["verdict"] == "BLOCKED"
+        assert result["overall_score"] == 15
+
+    def test_partially_blocked_when_some_search_blocked(self):
+        # Block 1 of 3 search-index bots — score = 67.
+        # Block nothing else. retrieval avg = (100+67)/2 = 83.
+        baseline = _resp(status=200, text=BASELINE_HTML)
+        bot_responses = []
+        blocked_one = False
+        for name, meta in AI_CRAWLERS.items():
+            if meta["class"] == "search-index" and not blocked_one:
+                bot_responses.append(_resp(status=403, text="blocked"))
+                blocked_one = True
+            else:
+                bot_responses.append(_resp(status=200, text=BASELINE_HTML))
+        with patch("fetch_page.requests.get",
+                   side_effect=[baseline] + bot_responses):
+            result = probe_ai_crawlers("http://example.com/")
+
+        assert result["verdict"] in ("PARTIALLY_BLOCKED", "OPEN", "HEALTHY_PUBLISHER")
+        assert result["class_scores"]["search-index"]["score"] < 100
+        assert result["class_scores"]["live-retrieval"]["score"] == 100

@@ -19,46 +19,147 @@ except ImportError:
 
 # AI crawler user agents used for live probing.
 #
-# This dict is consumed both by ad-hoc fetches in this module and by
-# probe_ai_crawlers() below, which replays the homepage as each of these
-# bots to detect WAF/Cloudflare blocking that static robots.txt analysis
-# cannot see. The list covers three groups:
+# Each bot carries a "class" tag because the labs themselves split their
+# fleets by purpose, and the GEO impact differs sharply by class. Mixing
+# them in a single bucket — as earlier versions of this module did —
+# produces misleading verdicts: a publisher that blocks training while
+# allowing retrieval (NYT, WSJ, Reuters, BBC pattern) is doing the
+# right thing for AI visibility, but flat scoring would call them
+# "partially blocked".
 #
-#   1. AI search bots — power user-facing AI search products (ChatGPT,
-#      Claude, Perplexity, Gemini, Bing Copilot, Apple Intelligence).
-#      Blocking these directly removes a site from AI answers.
-#   2. Traditional search bots — Googlebot and Bingbot. Listed because
-#      sites that block these via WAF lose regular search visibility,
-#      which is almost always unintentional and worth flagging loudly.
-#   3. Training-only crawlers — CCBot, Bytespider, Meta-ExternalAgent,
-#      Cohere-ai. Often deliberately blocked, which is fine; included
-#      so the report shows the full picture.
+# The four classes:
+#
+#   training       — bulk-collects content for foundation-model training
+#                    (GPTBot, ClaudeBot, CCBot, Google-Extended, etc.).
+#                    Lab docs explicitly state this content is not used
+#                    in live answers. Blocking has near-zero GEO impact.
+#   search-index   — indexes pages for AI search results
+#                    (OAI-SearchBot, Claude-SearchBot, PerplexityBot).
+#                    Blocking removes the site from AI search citations.
+#   live-retrieval — fetched on demand when a user asks a question
+#                    (ChatGPT-User, Claude-User, Perplexity-User).
+#                    Blocking prevents user-triggered citations.
+#   traditional-search — Googlebot, Bingbot. Power Google AI Overviews
+#                    and Bing/Copilot. Blocking is almost always a
+#                    misconfiguration and worth flagging loudly.
+#
+# See OpenAI/Anthropic/Perplexity bot docs and the Cloudflare/Botify
+# 2025 publisher-log analyses cited in the geo-botaccess SKILL.md.
 AI_CRAWLERS = {
-    # AI search bots (Tier 1 — most important to allow)
-    "GPTBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",
-    "ChatGPT-User": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ChatGPT-User/1.0; +https://openai.com/bot)",
-    "ClaudeBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +https://www.anthropic.com/claude-bot)",
-    "anthropic-ai": "anthropic-ai/1.0",
-    "PerplexityBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
-    "Google-Extended": "Mozilla/5.0 (compatible; Google-Extended/1.0; +http://www.google.com/bot.html)",
-    "Applebot-Extended": "Mozilla/5.0 (compatible; Applebot-Extended/1.0)",
-    # Traditional search bots (blocking these is usually a mistake)
-    "GoogleBot": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-    "BingBot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
-    # Training-only crawlers (often deliberately blocked)
-    "CCBot": "CCBot/2.0 (+https://commoncrawl.org/faq/)",
-    "Bytespider": "Bytespider/1.0",
-    "Meta-ExternalAgent": "Meta-ExternalAgent/1.0 (+https://www.meta.com/)",
-    "cohere-ai": "cohere-ai/1.0",
+    # OpenAI
+    "GPTBot": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",
+        "class": "training",
+        "operator": "OpenAI",
+    },
+    "OAI-SearchBot": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)",
+        "class": "search-index",
+        "operator": "OpenAI",
+    },
+    "ChatGPT-User": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ChatGPT-User/1.0; +https://openai.com/bot)",
+        "class": "live-retrieval",
+        "operator": "OpenAI",
+    },
+    # Anthropic
+    "ClaudeBot": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +https://www.anthropic.com/claude-bot)",
+        "class": "training",
+        "operator": "Anthropic",
+    },
+    "Claude-SearchBot": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-SearchBot/1.0; +https://www.anthropic.com/claudebot)",
+        "class": "search-index",
+        "operator": "Anthropic",
+    },
+    "Claude-User": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +https://www.anthropic.com/claudebot)",
+        "class": "live-retrieval",
+        "operator": "Anthropic",
+    },
+    "anthropic-ai": {
+        "ua": "anthropic-ai/1.0",
+        "class": "training",
+        "operator": "Anthropic",
+    },
+    # Perplexity
+    "PerplexityBot": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
+        "class": "search-index",
+        "operator": "Perplexity",
+    },
+    "Perplexity-User": {
+        "ua": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
+        "class": "live-retrieval",
+        "operator": "Perplexity",
+    },
+    # Google / Apple training opt-out tokens. These aren't real crawlers
+    # — they're robots.txt signals that the operator honours separately.
+    # Probing them tests only WAF-side UA filtering; treat results as
+    # informational rather than diagnostic of real bot reachability.
+    "Google-Extended": {
+        "ua": "Mozilla/5.0 (compatible; Google-Extended/1.0; +http://www.google.com/bot.html)",
+        "class": "training",
+        "operator": "Google",
+    },
+    "Applebot-Extended": {
+        "ua": "Mozilla/5.0 (compatible; Applebot-Extended/1.0)",
+        "class": "training",
+        "operator": "Apple",
+    },
+    # Traditional search bots (blocking these is usually a mistake).
+    # Surface separately because Googlebot 403 also kills regular
+    # Google Search indexing, not just AI Overviews.
+    "GoogleBot": {
+        "ua": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "class": "traditional-search",
+        "operator": "Google",
+    },
+    "BingBot": {
+        "ua": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+        "class": "traditional-search",
+        "operator": "Microsoft",
+    },
+    # Training-only crawlers. Often deliberately blocked by publishers
+    # — that posture is GEO-healthy and the report should not penalise it.
+    "CCBot": {
+        "ua": "CCBot/2.0 (+https://commoncrawl.org/faq/)",
+        "class": "training",
+        "operator": "Common Crawl",
+    },
+    "Bytespider": {
+        "ua": "Bytespider/1.0",
+        "class": "training",
+        "operator": "ByteDance",
+    },
+    "Meta-ExternalAgent": {
+        "ua": "Meta-ExternalAgent/1.0 (+https://www.meta.com/)",
+        "class": "training",
+        "operator": "Meta",
+    },
+    "cohere-ai": {
+        "ua": "cohere-ai/1.0",
+        "class": "training",
+        "operator": "Cohere",
+    },
 }
 
-# Bots that power AI search products users actively interact with.
-# Used by probe_ai_crawlers() and downstream skills to weight findings:
-# a 403 to one of these is a critical issue, while a 403 to a training
-# crawler may be intentional.
+# The four bot classes, in priority order for verdict logic. The
+# overall score weights these as 0.5 (retrieval = live + search),
+# 0.35 (traditional search), 0.15 (training) — see probe_ai_crawlers().
+BOT_CLASSES = (
+    "live-retrieval",
+    "search-index",
+    "traditional-search",
+    "training",
+)
+
+# Back-compat alias for callers and tests that still reference the
+# flat "AI search bots" set. New code should use AI_CRAWLERS[name]["class"].
 AI_SEARCH_BOTS = {
-    "GPTBot", "ChatGPT-User", "ClaudeBot", "PerplexityBot",
-    "Google-Extended", "Applebot-Extended", "GoogleBot", "BingBot",
+    name for name, meta in AI_CRAWLERS.items()
+    if meta["class"] in ("search-index", "live-retrieval", "traditional-search")
 }
 
 # Substrings that indicate a Cloudflare interstitial / challenge page
@@ -682,10 +783,13 @@ def probe_ai_crawlers(url: str, timeout: int = 15) -> dict:
         result["js_challenge_detected"] and not result["baseline"]["used_playwright"]
     )
 
-    for bot_name, bot_ua in AI_CRAWLERS.items():
+    for bot_name, meta in AI_CRAWLERS.items():
+        bot_ua = meta["ua"]
         probe = {
             "bot": bot_name,
             "user_agent": bot_ua,
+            "class": meta["class"],
+            "operator": meta["operator"],
             "status": None,
             "length": None,
             "similarity": None,
@@ -735,6 +839,57 @@ def probe_ai_crawlers(url: str, timeout: int = 15) -> dict:
                 probe["block_reason"] = "content_stripped"
 
         result["probes"].append(probe)
+
+    # --- 5. Per-class scoring + overall verdict -----------------------------
+    # Scoring is multi-dimensional rather than a single number because the
+    # GEO impact of blocking differs sharply by bot class. A site that
+    # blocks training but allows retrieval is the canonical healthy
+    # publisher posture (NYT, WSJ, Reuters, BBC) — one flat score would
+    # mislabel it. We emit a sub-score per class and an overall verdict
+    # that weights retrieval reachability heaviest.
+    by_class = {cls: {"total": 0, "blocked": 0, "score": 100}
+                for cls in BOT_CLASSES}
+    for probe in result["probes"]:
+        cls = probe["class"]
+        by_class[cls]["total"] += 1
+        if probe["blocked"]:
+            by_class[cls]["blocked"] += 1
+    # Each class drops linearly from 100 to 0 as the share of blocked
+    # bots in that class goes from 0% to 100%.
+    for stats in by_class.values():
+        if stats["total"]:
+            stats["score"] = max(
+                0, round(100 * (1 - stats["blocked"] / stats["total"]))
+            )
+
+    # JS-challenge penalty applies to the search-index and live-retrieval
+    # classes since non-browser bots can't bypass an interstitial.
+    if result["js_challenge_detected"] and not result["baseline"]["used_playwright"]:
+        for cls in ("search-index", "live-retrieval"):
+            by_class[cls]["score"] = max(0, by_class[cls]["score"] - 30)
+
+    result["class_scores"] = by_class
+
+    retrieval = (by_class["live-retrieval"]["score"] + by_class["search-index"]["score"]) // 2
+    traditional = by_class["traditional-search"]["score"]
+    training = by_class["training"]["score"]
+
+    # Verdict logic. Retrieval is the headline signal; training is
+    # informational. "HEALTHY_PUBLISHER" recognises the NYT/Reuters
+    # pattern explicitly so reports don't mislabel it as a problem.
+    if retrieval >= 90 and traditional >= 90:
+        verdict = "OPEN" if training >= 70 else "HEALTHY_PUBLISHER"
+    elif retrieval >= 70 and traditional >= 70:
+        verdict = "PARTIALLY_BLOCKED"
+    elif retrieval >= 40 or traditional >= 40:
+        verdict = "MOSTLY_BLOCKED"
+    else:
+        verdict = "BLOCKED"
+
+    result["verdict"] = verdict
+    result["overall_score"] = round(
+        0.5 * retrieval + 0.35 * traditional + 0.15 * training
+    )
 
     return result
 
