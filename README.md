@@ -234,6 +234,16 @@ rm -rf ~/.claude/skills/geo ~/.claude/skills/geo-* ~/.claude/agents/geo-*.md
 
 ---
 
+## Versioning & Releases
+
+GEO Reporter follows [Semantic Versioning](https://semver.org/). Tagged releases are published on GitHub with notes covering each change.
+
+- [Latest release](https://github.com/tzvister/geo-reporter/releases/latest) — install URL, breaking changes, and highlights
+- [All releases](https://github.com/tzvister/geo-reporter/releases) — full history
+- [CHANGELOG.md](CHANGELOG.md) — running record of every change in [Keep a Changelog](https://keepachangelog.com/) format
+
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for the full text and the upstream attribution notice.
