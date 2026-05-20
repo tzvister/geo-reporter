@@ -1,0 +1,27 @@
+{
+  "name": "geo-reporter",
+  "owner": {
+    "name": "Internet & Sons"
+  },
+  "metadata": {
+    "description": "Claude Code marketplace for the GEO Reporter plugin — AI search visibility audits, citability scoring, AI crawler analysis, llms.txt, brand mentions, schema, content quality, and client-ready PDF reports."
+  },
+  "plugins": [
+    {
+      "name": "geo-reporter",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/internet-and-sons/geo-reporter.git"
+      },
+      "version": "0.3.0",
+      "description": "GEO Reporter — AI Search Visibility Audits for Claude Code. Full GEO audits, citability scoring, AI crawler analysis, llms.txt, brand mentions, schema, content quality, and client-ready PDF reports. Slash commands: /geo, /geo-reporter:setup.",
+      "author": {
+        "name": "Tal Oron",
+        "email": "tal@internetandsons.com"
+      },
+      "license": "MIT",
+      "homepage": "https://github.com/internet-and-sons/geo-reporter",
+      "keywords": ["geo", "seo", "ai-search", "citability", "llms.txt", "schema", "audit"]
+    }
+  ]
+}
