@@ -8,6 +8,15 @@ GEO Reporter is a fork of, and is highly influenced by, [zubair-trabzada/geo-seo
 
 ## [Unreleased]
 
+### Added
+
+- **Claude plugin support** — repo is now installable as a Claude Code plugin via `/plugin add <repo-url>`. Adds `.claude-plugin/plugin.json` manifest and a `geo-reporter-setup` skill for first-run Python dependency installation.
+
+### Changed
+
+- **Main skill location** — `geo/SKILL.md` moved to `skills/geo/SKILL.md` to follow plugin layout convention. Legacy `install.sh` updated accordingly.
+- **Script paths in skills** — `geo-botaccess`, `geo-schema`, `geo-technical`, and `geo-report-pdf` now reference Python scripts via `${CLAUDE_PLUGIN_ROOT}/scripts/` instead of hardcoded `~/.claude/skills/geo/scripts/` or relative `scripts/` paths.
+
 ## [0.2.0] — 2026-04-27
 
 **Theme: community integration.** Every open contribution from upstream that's still useful has been ported in (with author attribution preserved on each commit), the project's contribution surface is now operational (CONTRIBUTING.md, CHANGELOG, automated review), and the workflow that runs Claude on PRs has been hardened through 4 iterations of empirical testing.

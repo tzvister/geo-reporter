@@ -34,7 +34,19 @@
 
 ## Quick Start
 
-### One-Command Install (macOS/Linux)
+### Install via Claude Code Plugin (Recommended)
+
+```
+/plugin add https://github.com/internet-and-sons/geo-reporter
+```
+
+Then install Python dependencies:
+
+```
+/geo-reporter:setup
+```
+
+### Alternative: One-Command Install (macOS/Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tzvister/geo-reporter/main/install.sh | bash

@@ -135,7 +135,7 @@ main() {
         SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || true
     fi
 
-    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/geo/SKILL.md" ]; then
+    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/skills/geo/SKILL.md" ]; then
         print_info "Installing from local directory..."
         SOURCE_DIR="$SCRIPT_DIR"
     else
@@ -147,13 +147,7 @@ main() {
         SOURCE_DIR="${TEMP_DIR}/repo"
     fi
 
-    # ---- Install Main Skill ----
-    print_info "Installing main GEO skill..."
-
-    cp -r "$SOURCE_DIR/geo/"* "$INSTALL_DIR/"
-    print_success "Main skill installed → ${INSTALL_DIR}/"
-
-    # ---- Install Sub-Skills ----
+    # ---- Install Skills ----
     print_info "Installing sub-skills..."
 
     SKILL_COUNT=0
