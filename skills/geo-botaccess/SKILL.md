@@ -67,7 +67,7 @@ Follow these steps when this skill triggers.
 Invoke the script and capture its JSON output:
 
 ```bash
-python scripts/fetch_page.py <url> bots
+python "${CLAUDE_PLUGIN_ROOT}/scripts/fetch_page.py" <url> bots
 ```
 
 The output is a single JSON object with this shape:
@@ -105,7 +105,7 @@ Parse this JSON in Bash with `python -c` or `jq`. Don't re-fetch the URL — the
 Run the existing `robots` mode to get static `robots.txt` analysis:
 
 ```bash
-python scripts/fetch_page.py <url> robots
+python "${CLAUDE_PLUGIN_ROOT}/scripts/fetch_page.py" <url> robots
 ```
 
 Then walk every entry in `probes[]` from Step 1 and compare against the declared status from Step 2. The four interesting cases are:
@@ -218,4 +218,4 @@ Keep it scannable. The user is iterating — they want to see the score change, 
 
 ## Re-running for iteration
 
-This skill is designed for the fix-and-retest loop. When the user reports making a change (e.g. "I added the Cloudflare rule"), simply re-invoke `python scripts/fetch_page.py <url> bots` and diff against the previous run. **Diff per-class scores rather than just the overall** — the most informative deltas are per-class (e.g. "live-retrieval went from 0 to 100, training stayed at 0 (intentional)"). The fastest user-facing summary is: "Live-retrieval 0 → 100, Search-index 0 → 100. ChatGPT-User, Claude-User, Perplexity-User now 200. Cloudflare WAF rule is working."
+This skill is designed for the fix-and-retest loop. When the user reports making a change (e.g. "I added the Cloudflare rule"), simply re-invoke `python "${CLAUDE_PLUGIN_ROOT}/scripts/fetch_page.py" <url> bots` and diff against the previous run. **Diff per-class scores rather than just the overall** — the most informative deltas are per-class (e.g. "live-retrieval went from 0 to 100, training stayed at 0 (intentional)"). The fastest user-facing summary is: "Live-retrieval 0 → 100, Search-index 0 → 100. ChatGPT-User, Claude-User, Perplexity-User now 200. Cloudflare WAF rule is working."
